@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内部员工面板</title>
+<style>
+  body { font-family:"Microsoft YaHei",sans-serif; background:#f4f6f8; margin:0; }
+  .top { background:#fff; padding:16px 28px; border-bottom:1px solid #e6eaee;
+         display:flex; justify-content:space-between; align-items:center; }
+  .tag { display:inline-block; background:#eef4ff; color:#2d7ff9; font-size:13px;
+         padding:3px 10px; border-radius:20px; }
+  .wrap { padding:28px; max-width:720px; margin:0 auto; }
+  .card { background:#fff; border-radius:10px; padding:22px 26px; margin-bottom:16px;
+          box-shadow:0 2px 10px rgba(0,0,0,.05); }
+  .lock { color:#a0a6ad; font-size:14px; }
+  pre { background:#20262e; color:#7ee787; padding:16px; border-radius:8px;
+        font-size:15px; overflow:auto; margin:0; }
+  ul { color:#555; font-size:14px; line-height:1.9; }
+  code { background:#f1f3f5; padding:2px 6px; border-radius:4px; font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <b>内部员工面板</b>
+    <span class="tag">当前身份：<span id="who">guest</span></span>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <b>可用功能</b>
+      <ul>
+        <li>查看值班表</li>
+        <li>提交报销单</li>
+        <li>下载考勤记录</li>
+      </ul>
+    </div>
+    <div class="card">
+      <b>管理员专区</b>
+      <div class="lock" id="admin">加载中…</div>
+    </div>
+    <div class="card">
+      <b>权限说明</b>
+      <ul>
+        <li>本面板使用 <code>role</code> 标识区分权限等级。</li>
+        <li>默认等级 <code>guest</code>，管理员为 <code>admin</code>。</li>
+        <li>管理员专区仅对 admin 开放。</li>
+      </ul>
+      <div style="color:#a0a6ad;font-size:12.5px;margin-top:10px">
+        运维备注：权限标识随请求一起提交，前端读取即可，无需重复校验。
+      </div>
+    </div>
+  </div>
+
+<script>
+// 首次访问下发身份标识
+(function () {
+  if (!/(^|;\s*)role=/.test(document.cookie)) {
+    document.cookie = "role=guest; path=/; max-age=86400";
+  }
+})();
+
+function getCookie(name) {
+  var m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[2]) : "";
+}
+
+function setText(id, txt) {
+  document.getElementById(id).textContent = txt;
+}
+
+(async function () {
+  var role = getCookie("role") || "guest";
+  setText("who", role);
+
+  if (role !== "admin") {
+    setText("admin", "（需要管理员权限，当前身份无权查看）");
+    return;
+  }
+
+  // admin 才去取数据源
+  try {
+    var res = await fetch("assets/data/manifest.json", { cache: "no-store" });
+    var cfg = await res.json();
+    // 数据源里的内容是倒序存放的，读出来要反过来
+    var raw = atob(cfg.payload);
+    var flag = raw.split("").reverse().join("");
+    document.getElementById("admin").innerHTML = "<pre>" + flag + "</pre>";
+  } catch (e) {
+    setText("admin", "数据源读取失败：" + e.message);
+  }
+})();
+</script>
+</body>
+</html>
